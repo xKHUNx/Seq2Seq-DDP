@@ -143,10 +143,30 @@ def extract_transition_based_text(split, structure_type, data_dir):
         id = dialogue['id']
         if id in ['s1-league1-game3_3', 's2-league1-game1_19']:
             continue
-        edus = re.split('[\[\]]', dialogue['dialogue'])
-        edus = [edu.strip() for edu in edus if edu.strip()]
+
+        # New EDU parsing logic
+        edus = []
+        dialogue_text = dialogue['dialogue']
+        # Find all [eduX] patterns
+        edu_markers = re.finditer(r'\[edu\d+\]', dialogue_text)
+        
+        # Get the positions of all EDU markers
+        positions = [(m.start(), m.end()) for m in edu_markers]
+        
+        # Extract text between EDU markers
+        for i in range(len(positions)):
+            start = positions[i][1]  # End of current EDU marker
+            end = positions[i+1][0] if i < len(positions)-1 else len(dialogue_text)
+            edu_text = dialogue_text[start:end].strip()
+            edus.append(f"edu{i}")  # Add EDU marker
+            edus.append(edu_text)   # Add EDU text
+            
         relations = re.split(';', dialogue['structure'])
         relations = [relation.strip() for relation in relations]
+        
+        # for idx, edu in enumerate(edus):
+        #   print(idx, edu)
+        # print(len(edus), len(relations))
         assert len(edus) == 2*len(relations), f"{id}: {edus}"
 
         diff = 0
