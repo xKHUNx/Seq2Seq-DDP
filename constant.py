@@ -24,7 +24,8 @@ MASKLABEL = {'Question_answer_pair': 'rel0',
             'Alternation':'rel12',
             'Narration':'rel13',
             'Conditional':'rel14',
-            'Background':'rel15'}
+            'Background':'rel15',
+            'Interruption':'rel16'}
 
 LABEL2ID = {'Question_answer_pair':0,
             'Comment':1,
@@ -41,7 +42,8 @@ LABEL2ID = {'Question_answer_pair':0,
             'Alternation':12,
             'Narration':13,
             'Conditional':14,
-            'Background':15}
+            'Background':15,
+            'Interruption':16}
 
 ID2LABEL = {0: 'Question_answer_pair',
             1: 'Comment',
@@ -58,7 +60,8 @@ ID2LABEL = {0: 'Question_answer_pair',
             12: 'Alternation',
             13: 'Narration',
             14: 'Conditional',
-            15: 'Background'}
+            15: 'Background',
+            16: 'Interruption'}
 
 # stored model checkpoint
 MODEL2CHECKPOINT = {'t0-3b_train_stac_focus_seed27_5e-5': 'checkpoint-6399',
