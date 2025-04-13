@@ -6,16 +6,14 @@ import argparse
 from constant import *
 
 
-def extract_structured_text(dataset, split, structure_type, data_dir, max_edu=500):
+def extract_structured_text(split, structure_type, data_dir, max_edu=500):
     """Convert original json files into Seq2Seq-DDP structured text.
 
     Args:
-        dataset (str): Choose from 'stac', 'molweni', 'diam'.
         split (str): Choose from 'train', 'dev', 'test'.
         structure_type (str): Choose from 'natural', 'augmented'.
         data_dir (str): Directory containing the dataset files.
-        max_edu (int, optional): Defaults to 500. longest EDUs in stac, 14 for molweni.
-            Not sure about DIAM yet.
+        max_edu (int, optional): Defaults to 500.
     """
     
     # special tokens
@@ -26,26 +24,20 @@ def extract_structured_text(dataset, split, structure_type, data_dir, max_edu=50
 
     assert structure_type in ['natural', 'augmented', 'labelmasked'], f"Structure type: {structure_type} unknown"
     
-    trainset = os.path.join(data_dir, dataset, "train.json")
-    devset = os.path.join(data_dir, dataset, "dev.json")
-    testset = os.path.join(data_dir, dataset, "test.json")
+    trainset = os.path.join(data_dir, "train.json")
+    devset = os.path.join(data_dir, "dev.json")
+    testset = os.path.join(data_dir, "test.json")
     
     splitf = {'train': trainset, 'dev': devset, 'test': testset}
 
     train_dataset = []
     
-    if dataset == 'stac':
-        with open(splitf[split], 'r') as inf:
-            docs = inf.readlines()
-    elif dataset in ['molweni', 'diam']:  # Modified to support diam
-        with open(splitf[split], 'r') as inf:
-            docs = json.load(inf)
+    # Read input file
+    with open(splitf[split], 'r') as inf:
+        docs = json.load(inf)
         
     for _, l in enumerate(docs):
-        if dataset == 'stac':
-            dial = json.loads(l)
-        else:  # handles both molweni and diam
-            dial = l
+        dial = l
                         
         input_text = []
         output_struct = []
@@ -125,26 +117,25 @@ def extract_structured_text(dataset, split, structure_type, data_dir, max_edu=50
             train_dataset_dict['structure'] = output_dial
             train_dataset.append(train_dataset_dict)
         
-    outfname = os.path.join(data_dir, f"{dataset}_{structure_type}_{split}.json")
+    outfname = os.path.join(data_dir, f"{structure_type}_{split}.json")
     with open(outfname, "w") as outf:
         for dict in train_dataset:
             string = json.dumps(dict)
             outf.write(string+'\n')
-       
-def extract_transition_based_text(dataset, split, structure_type, data_dir):
+
+def extract_transition_based_text(split, structure_type, data_dir):
     """Generate transition-based data set.
 
     Args:
-        dataset (str): Choose from 'stac', 'molweni'.
         split (str): Choose from 'train', 'dev', 'test'.
         structure_type (str): Choose from 'natural2', 'focus'.
         data_dir (str): Directory containing the dataset files.
     """
     assert structure_type in ['natural2', 'focus'], f"Transition-based structure type: {structure_type} unknown" 
     
-    with open(f"{data_dir}/{dataset}_natural_{split}.json", 'r') as f:
+    with open(f"{data_dir}/natural_{split}.json", 'r') as f:
         lines = f.readlines()
-    outf = open(f'{data_dir}/{dataset}_{structure_type}_{split}.json', 'w')
+    outf = open(f'{data_dir}/{structure_type}_{split}.json', 'w')
     
     diffs = []
     for line in lines:
@@ -249,17 +240,15 @@ if __name__=="__main__":
 
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("--dataset", type=str, help="stac, molweni")
     parser.add_argument("--split", type=str, help="train, dev, test")
     parser.add_argument("--structure_type", type=str, help="end2end: 'natural', 'augmented', 'labelmasked' | transition-based: 'focus', 'natural2'.")
     parser.add_argument("--data-dir", type=str, required=True, help="Directory containing the dataset files")
     args = parser.parse_args()
     
-    dataset = args.dataset
     split = args.split
     structure_type = args.structure_type
     data_dir = args.data_dir
 
-    extract_structured_text(dataset, split, structure_type, data_dir)
-    extract_transition_based_text(dataset, split, structure_type, data_dir)
+    extract_structured_text(split, structure_type, data_dir)
+    extract_transition_based_text(split, structure_type, data_dir)
  
