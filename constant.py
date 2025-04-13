@@ -10,6 +10,7 @@ DEFAULT_RELMASK = "rel0"
 
 # relation labels
 MASKLABEL = {'Question_answer_pair': 'rel0',
+            'Question-answer_pair':'rel0',
             'Comment':'rel1',
             'Acknowledgement':'rel2',
             'Continuation':'rel3',
