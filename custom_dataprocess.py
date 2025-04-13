@@ -249,6 +249,11 @@ if __name__=="__main__":
     structure_type = args.structure_type
     data_dir = args.data_dir
 
-    extract_structured_text(split, structure_type, data_dir)
-    extract_transition_based_text(split, structure_type, data_dir)
+    # Check structure type and call appropriate function
+    if structure_type in ['natural', 'augmented', 'labelmasked']:
+        extract_structured_text(split, structure_type, data_dir)
+    elif structure_type in ['natural2', 'focus']:
+        extract_transition_based_text(split, structure_type, data_dir)
+    else:
+        raise ValueError(f"Unknown structure type: {structure_type}")
  
