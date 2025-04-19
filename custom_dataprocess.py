@@ -262,7 +262,7 @@ if __name__=="__main__":
     
     parser.add_argument("--split", type=str, help="train, dev, test")
     parser.add_argument("--structure_type", type=str, help="end2end: 'natural', 'augmented', 'labelmasked' | transition-based: 'focus', 'natural2'.")
-    parser.add_argument("--data-dir", type=str, required=True, help="Directory containing the dataset files")
+    parser.add_argument("--data_dir", type=str, required=True, help="Directory containing the dataset files")
     args = parser.parse_args()
     
     split = args.split
