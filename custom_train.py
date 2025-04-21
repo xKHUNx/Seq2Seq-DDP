@@ -81,7 +81,7 @@ def setup_tokenizer(cfg):
     
     if cfg.t5_family in ['flan-t5', 't5']:
         tokenizer = T5Tokenizer.from_pretrained(local_model_path, local_files_only=True)
-    elif cfg.t5_family == 't0':
+    elif cfg.t5_family in ['t0', 't0-3b']:
         tokenizer = AutoTokenizer.from_pretrained(local_model_path, local_files_only=True)
     
     # update tokenizer with special tokens
@@ -317,7 +317,10 @@ if __name__=="__main__":
                 "flan-t5": f"google/flan-t5-{model_size}",
                 "t5": f"google-t5/t5-{model_size}"}
     pretrained_model_name = namematch[t5_family]
-        
+    args.pretrained_model_name = pretrained_model_name
+    print(args.pretrained_model_name)
+    print(args.t5_family)
+ 
     # load train, dev, test
     trainf = f"{args.data_dir}/{structure_type}_train.json"
     devf = f"{args.data_dir}/{structure_type}_dev.json" 

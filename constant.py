@@ -1,7 +1,7 @@
 # paths
-ROOT_DIR = "yourpathto/seq2seq-disc-parsing"
+ROOT_DIR = "/content/Seq2Seq-DDP"
 DATA_DIR = "yourpathto/seq2seq-disc-parsing/data"
-HF_MODEL_DIR = "yourpathto/.cache/huggingface/hub"
+HF_MODEL_DIR = "~/.cache/huggingface/hub"
 FT_MODEL_DIR = "yourpathto/seq2seq-disc-parsing/ft-models"
 
 # default values
