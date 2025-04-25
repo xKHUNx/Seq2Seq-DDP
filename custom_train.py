@@ -89,7 +89,7 @@ def setup_tokenizer(cfg, device):
         special_tokens = [f"[edu{i}]" for i in range(MAX_EDU_LEN)]
     elif cfg.structure_type == "labelmasked":
         special_tokens = [f"[edu{i}]" for i in range(MAX_EDU_LEN)]
-        special_tokens += [f"rel{i}" for i in range(16)] #masked 16 relation labels
+        special_tokens += [f"rel{i}" for i in range(17)] #masked 16 relation labels
     elif cfg.structure_type == "augmented":
         special_tokens = ["[", "]", "|", "="]
         special_tokens += [f"edu{i}" for i in range(MAX_EDU_LEN)]
@@ -315,7 +315,7 @@ if __name__=="__main__":
     test_corpus = args.test_corpus
     structure_type = args.structure_type
     
-    MAX_EDU_LEN = 37 # stac: 37, molweni: 14
+    MAX_EDU_LEN = 100 # stac: 37, molweni: 14
                         
     # choose a model from t5 family
     t5_family = args.t5_family
