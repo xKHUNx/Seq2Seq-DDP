@@ -75,7 +75,7 @@ def compute_metrics(eval_preds):
     result["gen_len"] = np.mean(prediction_lens)
     return result
 
-def setup_tokenizer(cfg):
+def setup_tokenizer(cfg, device):
     local_model_path = os.path.join(HF_MODEL_DIR, "models--" + "--".join(cfg.pretrained_model_name.split("/")), "snapshots/model")
     print(f"Read hf tokenizer from {local_model_path}")
     
@@ -101,7 +101,7 @@ def setup_tokenizer(cfg):
         special_tokens += ["[", "]"]
     tokenizer.add_tokens(special_tokens)
 
-    return tokenizer
+    return tokenizer.to(device)
     
 def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
     """Set up trainer"""
@@ -154,13 +154,14 @@ def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
     
     return trainer
 
-def exe_train(trainf, devf, tokenizer, cfg):
+def exe_train(trainf, devf, tokenizer, cfg, device):
     """Execute training / fine-tuning.
 
     Args:
         trainf (str): train json file path
         devf (str): dev json file path
         cfg (str): arguments
+        device: device for model and tokenizer
     """
     t = time.time()
     
@@ -208,7 +209,7 @@ def exe_train(trainf, devf, tokenizer, cfg):
     #                                     torch_dtype=torch.bfloat16 if cfg.bfloat16 else torch.float32, #torch.float16 or torch.bfloat16 or torch.float, default load torch.float (fp32)
     #                                     device_map="auto" # pip install accelerate. torchrun .py
     #                                     )
-    model = AutoModelForSeq2SeqLM.from_pretrained("bigscience/T0_3B")
+    model = AutoModelForSeq2SeqLM.from_pretrained("bigscience/T0_3B").to(device)
     model.resize_token_embeddings(len(tokenizer))
     
     # path to store fine-tuned model
@@ -339,10 +340,10 @@ if __name__=="__main__":
     set_seed(seed=args.seed)
     
     # set up tokenizer
-    tokenizer = setup_tokenizer(cfg=args)
+    tokenizer = setup_tokenizer(cfg=args, device)
     
     if args.do_train:  
-        exe_train(trainf, devf, tokenizer, cfg=args)
+        exe_train(trainf, devf, tokenizer, cfg=args, device)
 
     if args.do_test:  
         exe_test(testf, device, cfg=args)
