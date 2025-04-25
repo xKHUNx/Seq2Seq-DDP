@@ -121,7 +121,7 @@ def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
         bf16=True if cfg.bfloat16 else False, #default False, Requires Ampere or higher NVIDIA architecture or using CPU (use_cpu) or Ascend NPU.
         predict_with_generate=True,
         num_train_epochs=cfg.epoch,
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         eval_steps=cfg.step,
         logging_dir=f"{repository_id}/logs",
         logging_strategy='steps',
