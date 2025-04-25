@@ -101,7 +101,7 @@ def setup_tokenizer(cfg, device):
         special_tokens += ["[", "]"]
     tokenizer.add_tokens(special_tokens)
 
-    return tokenizer.to(device)
+    return tokenizer
     
 def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
     """Set up trainer"""
