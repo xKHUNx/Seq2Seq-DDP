@@ -82,7 +82,7 @@ def setup_tokenizer(cfg):
     if cfg.t5_family in ['flan-t5', 't5']:
         tokenizer = T5Tokenizer.from_pretrained(local_model_path, local_files_only=True)
     elif cfg.t5_family in ['t0', 't0-3b']:
-        tokenizer = AutoTokenizer.from_pretrained(local_model_path, local_files_only=True)
+        tokenizer = AutoTokenizer.from_pretrained("bigscience/T0_3B")
     
     # update tokenizer with special tokens
     if cfg.structure_type == "natural":
