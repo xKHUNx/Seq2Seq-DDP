@@ -76,11 +76,8 @@ def compute_metrics(eval_preds):
     return result
 
 def setup_tokenizer(cfg):
-    local_model_path = os.path.join(HF_MODEL_DIR, "models--" + "--".join(cfg.pretrained_model_name.split("/")), "snapshots/model")
-    print(f"Read hf tokenizer from {local_model_path}")
-    
     if cfg.t5_family in ['flan-t5', 't5']:
-        tokenizer = T5Tokenizer.from_pretrained(local_model_path, local_files_only=True)
+        tokenizer = T5Tokenizer.from_pretrained(cfg.pretrained_model_name)
     elif cfg.t5_family in ['t0', 't0-3b']:
         tokenizer = AutoTokenizer.from_pretrained("bigscience/T0_3B")
     
@@ -203,11 +200,8 @@ def exe_train(trainf, devf, tokenizer, cfg):
     print(f"Keys of tokenized dataset: {list(tokenized_train.features)}")                        
 
     # set up model
-    model = AutoModelForSeq2SeqLM.from_pretrained(local_model_path,
-                                        local_files_only=True,
-                                        torch_dtype=torch.bfloat16 if cfg.bfloat16 else torch.float32, #torch.float16 or torch.bfloat16 or torch.float, default load torch.float (fp32)
-                                        device_map="auto" # pip install accelerate. torchrun .py
-                                        )
+    # Remove local model path and load directly from HF
+    model = AutoModelForSeq2SeqLM.from_pretrained(cfg.pretrained_model_name,
     model.resize_token_embeddings(len(tokenizer))
     
     # path to store fine-tuned model
@@ -241,10 +235,10 @@ def exe_test(testf, device, cfg):
     # load tokenizer
     model_dir = os.path.join(FT_MODEL_DIR, f"{cfg.t5_family}-{cfg.model_size}_train_{cfg.train_corpus}_{cfg.structure_type}_seed{cfg.seed}_{cfg.lr}")
     fn_model_name = f"{cfg.t5_family}-{cfg.model_size}_train_{cfg.train_corpus}_{cfg.structure_type}_seed{cfg.seed}_{cfg.lr}"
-
     modelcheckpoint = os.path.join(model_dir, MODEL2CHECKPOINT[fn_model_name])
-    tokenizer = AutoTokenizer.from_pretrained(modelcheckpoint, local_files_only=True)                   
-    model = AutoModelForSeq2SeqLM.from_pretrained(modelcheckpoint, local_files_only=True,\
+    
+    tokenizer = AutoTokenizer.from_pretrained(modelcheckpoint)                   
+    model = AutoModelForSeq2SeqLM.from_pretrained(modelcheckpoint,
                                                 torch_dtype=torch.bfloat16 if cfg.bfloat16 else torch.float32)
     
     model.parallelize()
