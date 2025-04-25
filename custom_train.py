@@ -189,11 +189,15 @@ def exe_train(trainf, devf, tokenizer, cfg):
     
     # tokenize train and dev
     tokenized_train = base_train.map(preprocess_function, 
-                                    fn_kwargs={"tokenizer": tokenizer},
+                                    fn_kwargs={"tokenizer": tokenizer,
+                                               "max_source_length": max_source_length,
+                                               "max_target_length": max_target_length},
                                     batched=True, 
                                     remove_columns=["dialogue", "structure", "id"])
     tokenized_dev = data_dev.map(preprocess_function, 
-                                    fn_kwargs={"tokenizer": tokenizer},
+                                    fn_kwargs={"tokenizer": tokenizer,
+                                               "max_source_length": max_source_length,
+                                               "max_target_length": max_target_length},
                                     batched=True,
                                     remove_columns=["dialogue", "structure", "id"])
     print(f"Keys of tokenized dataset: {list(tokenized_train.features)}")                        
