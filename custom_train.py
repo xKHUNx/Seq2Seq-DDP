@@ -100,6 +100,8 @@ def setup_tokenizer(cfg):
         special_tokens = [f"[edu{i}]" for i in range(MAX_EDU_LEN)]
         special_tokens += ["[", "]"]
     tokenizer.add_tokens(special_tokens)
+
+    return tokenizer
     
 def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
     """Set up trainer"""
