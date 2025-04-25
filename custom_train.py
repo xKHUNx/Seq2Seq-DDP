@@ -340,10 +340,10 @@ if __name__=="__main__":
     set_seed(seed=args.seed)
     
     # set up tokenizer
-    tokenizer = setup_tokenizer(cfg=args, device)
+    tokenizer = setup_tokenizer(args, device)
     
     if args.do_train:  
-        exe_train(trainf, devf, tokenizer, cfg=args, device)
+        exe_train(trainf, devf, tokenizer, args, device)
 
     if args.do_test:  
         exe_test(testf, device, cfg=args)
