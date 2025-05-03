@@ -37,12 +37,9 @@ def preprocess_function(samples, tokenizer, max_source_length, max_target_length
     return model_inputs
 
 # Metric
-try:
-    # if error with loading rouge metric, download rouge.py and use it locally
-    metric = datasets.load_metric(f"{ROOT_DIR}/rouge.py")
-    print('load metric locally')
-except:
-    metric = evaluate.load("rouge")
+metric = evaluate.load(f"{ROOT_DIR}/rouge.py")
+print("rouge score loaded.")
+
 
 # Helper function to postprocess text
 def postprocess_text(preds, labels):
@@ -75,14 +72,14 @@ def compute_metrics(eval_preds):
     result["gen_len"] = np.mean(prediction_lens)
     return result
 
-def setup_tokenizer(cfg, device):
-    local_model_path = os.path.join(HF_MODEL_DIR, "models--" + "--".join(cfg.pretrained_model_name.split("/")), "snapshots/model")
+def setup_tokenizer(cfg):
+    local_model_path = os.path.join(HF_MODEL_DIR, "models--" + "--".join(cfg.pretrained_model_name.split("/")), "snapshots/032a20e775dd500df0a5a7f404466183d67f172b")
     print(f"Read hf tokenizer from {local_model_path}")
     
     if cfg.t5_family in ['flan-t5', 't5']:
         tokenizer = T5Tokenizer.from_pretrained(local_model_path, local_files_only=True)
-    elif cfg.t5_family in ['t0', 't0-3b']:
-        tokenizer = AutoTokenizer.from_pretrained("bigscience/T0_3B")
+    elif cfg.t5_family == 't0-3b':
+        tokenizer = AutoTokenizer.from_pretrained(local_model_path, local_files_only=True)
     
     # update tokenizer with special tokens
     if cfg.structure_type == "natural":
@@ -168,8 +165,8 @@ def exe_train(trainf, devf, tokenizer, cfg, device):
     base_train = load_dataset('json', data_files=trainf)['train'] 
     data_dev = load_dataset('json', data_files=devf)['train']
     print(len(base_train['dialogue']), len(data_dev['dialogue']))
-
-    local_model_path = os.path.join(HF_MODEL_DIR, "models--" + "--".join(cfg.pretrained_model_name.split("/")), "snapshots/model")
+    
+    local_model_path = os.path.join(HF_MODEL_DIR, "models--" + "--".join(cfg.pretrained_model_name.split("/")), "snapshots/032a20e775dd500df0a5a7f404466183d67f172b")
     print(f"read huggingface model from {local_model_path}")
     
     tokenized_inputs = concatenate_datasets([base_train, data_dev]).map(
@@ -204,13 +201,12 @@ def exe_train(trainf, devf, tokenizer, cfg, device):
     print(f"Keys of tokenized dataset: {list(tokenized_train.features)}")                        
 
     # set up model
-    # model = AutoModelForSeq2SeqLM.from_pretrained(local_model_path,
-    #                                     local_files_only=True,
-    #                                     torch_dtype=torch.bfloat16 if cfg.bfloat16 else torch.float32, #torch.float16 or torch.bfloat16 or torch.float, default load torch.float (fp32)
-    #                                     device_map="auto" # pip install accelerate. torchrun .py
-    #                                     )
-    model = AutoModelForSeq2SeqLM.from_pretrained("bigscience/T0_3B").to(device)
-    model.resize_token_embeddings(len(tokenizer))
+    model = AutoModelForSeq2SeqLM.from_pretrained(local_model_path,
+                                        local_files_only=True,
+                                        torch_dtype=torch.bfloat16 if cfg.bfloat16 else torch.float32, #torch.float16 or torch.bfloat16 or torch.float, load float32
+                                        device_map="auto" # pip install accelerate. torchrun .py
+                                        )
+     model.resize_token_embeddings(len(tokenizer))
     
     # path to store fine-tuned model
     model_dir = os.path.join(FT_MODEL_DIR, f"{cfg.t5_family}-{cfg.model_size}_train_{cfg.train_corpus}_{cfg.structure_type}_seed{cfg.seed}_{cfg.lr}")
@@ -324,12 +320,9 @@ if __name__=="__main__":
     namematch = {"t0-3b": f"bigscience/T0_3B",
                 "flan-t5": f"google/flan-t5-{model_size}",
                 "t5": f"google-t5/t5-{model_size}"}
-    pretrained_model_name = namematch[t5_family]
-    args.pretrained_model_name = pretrained_model_name
-    print(args.pretrained_model_name)
-    print(args.t5_family)
- 
-    # load train, dev, test
+    args.pretrained_model_name = namematch[t5_family]
+        
+     # load train, dev, test
     trainf = f"{args.data_dir}/{structure_type}_train.json"
     devf = f"{args.data_dir}/{structure_type}_dev.json" 
     testf = f"{args.data_dir}/{structure_type}_test.json" 
