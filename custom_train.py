@@ -206,7 +206,7 @@ def exe_train(trainf, devf, tokenizer, cfg, device):
                                         torch_dtype=torch.bfloat16 if cfg.bfloat16 else torch.float32, #torch.float16 or torch.bfloat16 or torch.float, load float32
                                         device_map="auto" # pip install accelerate. torchrun .py
                                         )
-     model.resize_token_embeddings(len(tokenizer))
+    model.resize_token_embeddings(len(tokenizer))
     
     # path to store fine-tuned model
     model_dir = os.path.join(FT_MODEL_DIR, f"{cfg.t5_family}-{cfg.model_size}_train_{cfg.train_corpus}_{cfg.structure_type}_seed{cfg.seed}_{cfg.lr}")
