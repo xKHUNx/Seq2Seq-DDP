@@ -14,11 +14,11 @@ nltk==3.9.1
 matplotlib
 evaluate==0.4.3
 datasets==3.5.0
-deepspeed==0.16.0
+deepspeed==0.16.7
 seaborn
 tensorboard==2.19.0
 tensorboardX
 rouge_score==0.1.2
-sklearn==1.6.1
 jellyfish==0.8.7
 scipy
+scikit-learn==1.6.1
