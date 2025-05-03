@@ -1,7 +1,7 @@
 # paths
 ROOT_DIR = "/content/Seq2Seq-DDP"
 DATA_DIR = "yourpathto/Seq2Seq-DDP/data"
-HF_MODEL_DIR = "~/.cache/huggingface/hub/fp32"
+HF_MODEL_DIR = "/root/.cache/huggingface/hub"
 FT_MODEL_DIR = "yourpathto/Seq2Seq-DDP/ft-models"
 
 # default values
