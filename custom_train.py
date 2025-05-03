@@ -333,7 +333,7 @@ if __name__=="__main__":
     set_seed(seed=args.seed)
     
     # set up tokenizer
-    tokenizer = setup_tokenizer(args, device)
+    tokenizer = setup_tokenizer(args)
     
     if args.do_train:  
         exe_train(trainf, devf, tokenizer, args, device)
