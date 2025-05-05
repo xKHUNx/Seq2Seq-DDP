@@ -46,76 +46,78 @@ def extract_structured_text(split, structure_type, data_dir, max_edu=500):
         text_length = len(dial['edus'])
         
         # start parsing a doc
-        if not text_length > max_edu:
-            for j, edu in enumerate(dial['edus']):
-                if structure_type == 'augmented': #example: [ Dave: I can trade wheat or clay | edu1 | Elaboration = edu0 ]
-                    if '[' in edu['text'] or ']' in edu['text']:
-                        text2 = edu['text'].replace('[', '').replace(']', '').replace('|', '') # remove all []| symbols in the text as they make confusions with augmented strucutre
-                    else:
-                        text2 = edu['text']
-                    spktext = f"{edu['speaker']}: {text2}"
-                    input_text.append(f"{BEGIN_EDU_TOKEN} {spktext} {END_EDU_TOKEN}")
-                    output_begin = f"{BEGIN_EDU_TOKEN} {spktext} {SEPARATOR_TOKEN} edu{j} {SEPARATOR_TOKEN} "
-                    if j == 0:
-                        rel = 'root = edu0'
-                        output_begin += f"{rel} {END_EDU_TOKEN}"
-                    else:
-                        for k, rel in enumerate(dial['relations']):
-                            eduy = int(rel['y'])
-                            if eduy == j: 
-                                edux = int(rel['x'])
-                                rel = rel['type']
-                                output_begin += f"{rel} {RELATION_TOKEN} edu{edux} "
-                        output_begin += f"{END_EDU_TOKEN}"
-                    output_struct.append(output_begin)
-                    
-                elif structure_type == 'natural': #example: [edu1] is Elaboration of [edu0];
-                    spktext = f"[edu{j}] {edu['speaker']}: {edu['text']}"
-                    input_text.append(spktext)
-                    output_begin = f"[edu{j}] is "
-                    if j == 0:
-                        rel = 'root'
-                        output_begin += rel
-                    else:
-                        for k, rel in enumerate(dial['relations']):
-                            eduy = int(rel['y'])
-                            if eduy == j: 
-                                edux = int(rel['x'])
-                                rel = rel['type']
-                                output_begin += f"{rel} of [edu{edux}] "
-                        output_begin = output_begin[:-1] 
-                    output_struct.append(output_begin)
+        for j, edu in enumerate(dial['edus']):
+            if j >= max_edu:  # Only process up to max_edu-th EDU
+                break
+                
+            if structure_type == 'augmented': #example: [ Dave: I can trade wheat or clay | edu1 | Elaboration = edu0 ]
+                if '[' in edu['text'] or ']' in edu['text']:
+                    text2 = edu['text'].replace('[', '').replace(']', '').replace('|', '') # remove all []| symbols in the text as they make confusions with augmented strucutre
+                else:
+                    text2 = edu['text']
+                spktext = f"{edu['speaker']}: {text2}"
+                input_text.append(f"{BEGIN_EDU_TOKEN} {spktext} {END_EDU_TOKEN}")
+                output_begin = f"{BEGIN_EDU_TOKEN} {spktext} {SEPARATOR_TOKEN} edu{j} {SEPARATOR_TOKEN} "
+                if j == 0:
+                    rel = 'root = edu0'
+                    output_begin += f"{rel} {END_EDU_TOKEN}"
+                else:
+                    for k, rel in enumerate(dial['relations']):
+                        eduy = int(rel['y'])
+                        if eduy == j: 
+                            edux = int(rel['x'])
+                            rel = rel['type']
+                            output_begin += f"{rel} {RELATION_TOKEN} edu{edux} "
+                    output_begin += f"{END_EDU_TOKEN}"
+                output_struct.append(output_begin)
+                
+            elif structure_type == 'natural': #example: [edu1] is Elaboration of [edu0];
+                spktext = f"[edu{j}] {edu['speaker']}: {edu['text']}"
+                input_text.append(spktext)
+                output_begin = f"[edu{j}] is "
+                if j == 0:
+                    rel = 'root'
+                    output_begin += rel
+                else:
+                    for k, rel in enumerate(dial['relations']):
+                        eduy = int(rel['y'])
+                        if eduy == j: 
+                            edux = int(rel['x'])
+                            rel = rel['type']
+                            output_begin += f"{rel} of [edu{edux}] "
+                    output_begin = output_begin[:-1] 
+                output_struct.append(output_begin)
 
-                elif structure_type == 'labelmasked': #example: [edu1] is rel4 of [edu0];
-                    if '[' in edu['text'] or ']' in edu['text']:
-                        text2 = edu['text'].replace('[', '').replace(']', '').replace('|', '') # remove all []| symbols in the text
-                    else:
-                        text2 = edu['text']
-                    spktext = f"[edu{j}] {edu['speaker']}: {text2}"
-                    input_text.append(spktext)
-                    output_begin = f"[edu{j}] is "
-                    if j == 0:
-                        rel = 'root'
-                        output_begin += rel
-                    else:
-                        for _, rel in enumerate(dial['relations']):
-                            eduy = int(rel['y'])
-                            if eduy == j: 
-                                edux = int(rel['x'])
-                                rel = rel['type']
-                                maskedrel = MASKLABEL[rel]
-                                output_begin += f"{maskedrel} of [edu{edux}] "
-                        output_begin = output_begin[:-1]
-                    output_struct.append(output_begin)
-            
-            input_dial = " ".join(input_text)
-            if structure_type == 'augmented':
-                output_dial = " ".join(output_struct)    
-            else:
-                output_dial = "; ".join(output_struct)
-            train_dataset_dict['dialogue'] = input_dial
-            train_dataset_dict['structure'] = output_dial
-            train_dataset.append(train_dataset_dict)
+            elif structure_type == 'labelmasked': #example: [edu1] is rel4 of [edu0];
+                if '[' in edu['text'] or ']' in edu['text']:
+                    text2 = edu['text'].replace('[', '').replace(']', '').replace('|', '') # remove all []| symbols in the text
+                else:
+                    text2 = edu['text']
+                spktext = f"[edu{j}] {edu['speaker']}: {text2}"
+                input_text.append(spktext)
+                output_begin = f"[edu{j}] is "
+                if j == 0:
+                    rel = 'root'
+                    output_begin += rel
+                else:
+                    for _, rel in enumerate(dial['relations']):
+                        eduy = int(rel['y'])
+                        if eduy == j: 
+                            edux = int(rel['x'])
+                            rel = rel['type']
+                            maskedrel = MASKLABEL[rel]
+                            output_begin += f"{maskedrel} of [edu{edux}] "
+                    output_begin = output_begin[:-1]
+                output_struct.append(output_begin)
+        
+        input_dial = " ".join(input_text)
+        if structure_type == 'augmented':
+            output_dial = " ".join(output_struct)    
+        else:
+            output_dial = "; ".join(output_struct)
+        train_dataset_dict['dialogue'] = input_dial
+        train_dataset_dict['structure'] = output_dial
+        train_dataset.append(train_dataset_dict)
         
     outfname = os.path.join(data_dir, f"{structure_type}_{split}.json")
     with open(outfname, "w") as outf:
