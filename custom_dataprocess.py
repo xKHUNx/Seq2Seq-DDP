@@ -265,15 +265,17 @@ if __name__=="__main__":
     parser.add_argument("--split", type=str, help="train, dev, test")
     parser.add_argument("--structure_type", type=str, help="end2end: 'natural', 'augmented', 'labelmasked' | transition-based: 'focus', 'natural2'.")
     parser.add_argument("--data_dir", type=str, required=True, help="Directory containing the dataset files")
+    parser.add_argument("--max_edu", type=int, default=500, help="Maximum number of EDUs to process per dialogue")
     args = parser.parse_args()
     
     split = args.split
     structure_type = args.structure_type
     data_dir = args.data_dir
+    max_edu = args.max_edu
 
     # Check structure type and call appropriate function
     if structure_type in ['natural', 'augmented', 'labelmasked']:
-        extract_structured_text(split, structure_type, data_dir)
+        extract_structured_text(split, structure_type, data_dir, max_edu)
     elif structure_type in ['natural2', 'focus']:
         extract_transition_based_text(split, structure_type, data_dir)
     else:
