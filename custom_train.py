@@ -107,7 +107,7 @@ def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
     
     # TrainingArguments
     training_args = Seq2SeqTrainingArguments(
-        output_dir=out_dir,
+        output_dir=cfg.out_dir,
         learning_rate=float(cfg.lr),
         per_device_train_batch_size=cfg.batchsize,
         per_device_eval_batch_size=cfg.batchsize,
@@ -305,6 +305,7 @@ if __name__=="__main__":
     parser.add_argument("--batchsize", type=int, default=4, help="t0-3b: 4, flan-t5-base and large: 8")  
     parser.add_argument("--step", type=int, default=2000, help="2000 for molweni transition-based (focus, natural2) | 500 for all else")  
     parser.add_argument("--seed", type=int, default=27, help="seed: 27, 16, etc")
+    parser.add_argument("--out_dir", type=str)
     args = parser.parse_args()
     
     train_corpus = args.train_corpus 
