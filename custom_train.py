@@ -125,7 +125,7 @@ def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
         logging_steps=cfg.step,
         save_strategy="epoch",
         save_steps=cfg.step,
-        save_total_limit=2,
+        save_total_limit=1,
         load_best_model_at_end=True,
     )
 
