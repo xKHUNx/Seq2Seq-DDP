@@ -111,20 +111,17 @@ def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
         learning_rate=float(cfg.lr),
         per_device_train_batch_size=cfg.batchsize,
         per_device_eval_batch_size=cfg.batchsize,
-        gradient_accumulation_steps=1, # optimize vram
+        gradient_accumulation_steps=1,
         gradient_checkpointing=True,
-        optim="adamw_torch", # "adamw_torch" | "adafactor", "adamw_bnb_8bit" 
-        fp16=False, # default False, whether use fp16 16-bit (mixed) precision training instead of 32-bit training.
-        bf16=True if cfg.bfloat16 else False, #default False, Requires Ampere or higher NVIDIA architecture or using CPU (use_cpu) or Ascend NPU.
+        optim="adamw_torch",
+        fp16=False,
+        bf16=True if cfg.bfloat16 else False,
         predict_with_generate=True,
         num_train_epochs=cfg.epoch,
-        eval_strategy="epoch",
-        eval_steps=cfg.step,
+        eval_strategy="epoch",  # Correct key
         logging_dir=f"{repository_id}/logs",
-        logging_strategy='steps',
-        logging_steps=cfg.step,
-        save_strategy="epoch",
-        save_steps=cfg.step,
+        logging_strategy="epoch",     # Log once per epoch
+        save_strategy="epoch",        # Save once per epoch
         save_total_limit=1,
         load_best_model_at_end=True,
     )
@@ -312,7 +309,7 @@ if __name__=="__main__":
     test_corpus = args.test_corpus
     structure_type = args.structure_type
     
-    MAX_EDU_LEN = 100 # stac: 37, molweni: 14
+    MAX_EDU_LEN = 40 # stac: 37, molweni: 14
                         
     # choose a model from t5 family
     t5_family = args.t5_family
