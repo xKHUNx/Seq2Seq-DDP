@@ -2,7 +2,7 @@
 ROOT_DIR = "/root/Seq2Seq-DDP"
 DATA_DIR = "/root/Seq2Seq-DDP/data"
 HF_MODEL_DIR = "/root/.cache/huggingface/hub"
-FT_MODEL_DIR = "yourpathto/Seq2Seq-DDP/ft-models"
+FT_MODEL_DIR = "/workspace/Seq2Seq-DDP/ft-models"
 
 # default values
 DEFAULT_REL = "Question_answer_pair"
