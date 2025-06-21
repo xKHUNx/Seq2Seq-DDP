@@ -166,7 +166,7 @@ def extract_structured_text(split, structure_type, data_dir, max_edu=500, window
             train_dataset_dict['structure'] = output_dial
             train_dataset.append(train_dataset_dict)
         
-    outfname = os.path.join(data_dir, f"{structure_type}_{split}_sliding.json")
+    outfname = os.path.join(data_dir, f"{structure_type}_{split}.json")
     with open(outfname, "w") as outf:
         for dict in train_dataset:
             string = json.dumps(dict)
@@ -186,7 +186,7 @@ def extract_transition_based_text(split, structure_type, data_dir, window_size=1
     
     with open(f"{data_dir}/natural_{split}.json", 'r') as f:
         lines = f.readlines()
-    outf = open(f'{data_dir}/{structure_type}_{split}_sliding.json', 'w')
+    outf = open(f'{data_dir}/{structure_type}_{split}.json', 'w')
     
     for line in lines:
         dialogue = json.loads(line)
