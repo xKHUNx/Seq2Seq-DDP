@@ -12,9 +12,9 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                         structure_type='natural', max_infer_len=512, seed=27, lr='5e-5',\
                         count_root=True, SHOW_raw=True, SHOW_postprocess=True):
     """Evaluate end2end generation"""
-    
-    genf = f"generation/{fted_model}_train_{train_corpus}_test_{test_corpus}_{structure_type}_seed{seed}_gen{max_infer_len}_lr{lr}.jsonl"
-    goldf = f"data/{test_corpus}_{structure_type}_test.json"
+    print("called end2end")
+    genf = f"/root/Seq2Seq-DDP/generation/t0-3b-3b_train_diam_test_diam_augmented_seed27_gen1024_lr2e-5.jsonl"
+    goldf = f"/root/final_dataset_max8_5/augmented_test.json"
            
     # read predictions
     predictions = []
@@ -254,20 +254,20 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
     print(f"[{structure_type}]")
     if SHOW_raw:
         recall = TP / G * 100
-        precision = TP / (P-4) * 100 #in gold, docs in line 2,78,81,91 miss 1 edge
+        precision = TP / (P) * 100 #in gold, docs in line 2,78,81,91 miss 1 edge
         f1 = 2 * recall * precision / (recall + precision)
         print(f"Raw  [link+rel] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
         recall = TP_link / G_link * 100
-        precision = TP_link / (P_link-4) * 100
+        precision = TP_link / (P_link) * 100
         f1 = 2 * recall * precision / (recall + precision)
         print(f"Raw  [linkonly] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
     if SHOW_postprocess:
         recall = clean_TP / G * 100
-        precision = clean_TP / (clean_P-4) * 100
+        precision = clean_TP / (clean_P) * 100
         f1 = 2 * recall * precision / (recall + precision)
         print(f"Post [link+rel] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
         recall = clean_TP_link / G_link * 100
-        precision = clean_TP_link / (clean_P_link-4) * 100
+        precision = clean_TP_link / (clean_P_link) * 100
         f1 = 2 * recall * precision / (recall + precision)
         print(f"Post [linkonly] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
     print()
@@ -365,7 +365,7 @@ def evaluate_transition_result(fted_model, train_corpus='stac', test_corpus='sta
     f1 = 2 * recall * precision / (recall + precision)
     print(f"[link+rel] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
     recall = TP_link / G_link * 100
-    precision = TP_link / (P_link-4) * 100
+    precision = TP_link / P_link * 100 if P_link > 0 else 0
     f1 = 2 * recall * precision / (recall + precision)
     print(f"[linkonly] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}")
     print()
@@ -396,10 +396,10 @@ if __name__=='__main__':
     else:
         max_infer_len=512
         
-    # evaluate_gen_result(fted_model, train_corpus=train_corpus, test_corpus=test_corpus, \
-    #                     structure_type=structure_type, max_infer_len=max_infer_len, seed=seed, lr=lr)
+    evaluate_gen_result(fted_model, train_corpus=train_corpus, test_corpus=test_corpus, \
+                        structure_type=structure_type, max_infer_len=max_infer_len, seed=seed, lr=lr)
     
 
-    evaluate_transition_result(fted_model, train_corpus=train_corpus, test_corpus=test_corpus, \
-                            structure_type=structure_type, max_infer_len=max_infer_len, seed=seed, lr=lr)
+    # evaluate_transition_result(fted_model, train_corpus=train_corpus, test_corpus=test_corpus, \
+    #                         structure_type=structure_type, max_infer_len=max_infer_len, seed=seed, lr=lr)
     
