@@ -16,6 +16,7 @@ import json
 from nltk.tokenize import sent_tokenize
 # nltk.download("punkt")
 import time
+import shutil  # Add this import for rmtree
 
 from constant import *
 
@@ -118,12 +119,20 @@ def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
         bf16=True if cfg.bfloat16 else False,
         predict_with_generate=True,
         num_train_epochs=cfg.epoch,
-        eval_strategy="epoch",  # Correct key
-        logging_dir=f"{repository_id}/logs",
-        logging_strategy="epoch",     # Log once per epoch
-        save_strategy="epoch",        # Save once per epoch
-        save_total_limit=1,
-        load_best_model_at_end=True,
+
+        # # Logging & Evaluation - KEEP THESE
+        # eval_strategy="epoch",           # Still evaluate each epoch
+        # logging_strategy="epoch",        # Still log metrics  
+        # logging_dir=f"{repository_id}/logs",
+
+        # Checkpointing - DISABLE ALL INTERMEDIATE SAVES
+        save_strategy="no",              # NO automatic checkpoint saves
+        save_total_limit=None,           # Not relevant when save_strategy="no"
+        load_best_model_at_end=False,    # Can't load what doesn't exist
+        
+        # Metrics for evaluation (still tracked, just not used for loading)
+        metric_for_best_model="rougeL",
+        greater_is_better=True,
     )
 
     # we want to ignore tokenizer pad token in the loss
@@ -145,6 +154,15 @@ def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
     )
 
     trainer.train()
+
+    # manually delete older checkpoints except the latest one
+    checkpoints = [ckpt for ckpt in os.listdir(cfg.out_dir) if ckpt.startswith("checkpoint-")]
+    checkpoints.sort(key=lambda x: int(x.split("-")[1]))
+    for ckpt in checkpoints[:-1]:
+        path = os.path.join(cfg.out_dir, ckpt)
+        print(f"Deleting old checkpoint: {path}")
+        shutil.rmtree(path)
+
     
     return trainer
 
