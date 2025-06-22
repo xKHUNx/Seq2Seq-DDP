@@ -277,8 +277,9 @@ def evaluate_transition_result(fted_model, train_corpus='stac', test_corpus='sta
                             max_infer_len=512, seed=27, lr='5e-5', count_root=True):
     """Evaluate transition-based generation"""
     
-    genf = f"generation/{fted_model}_train_{train_corpus}_test_{test_corpus}_transitionbase_{structure_type}_seed{seed}_gen{max_infer_len}_lr{lr}_iterinfer.jsonl"
-    goldf = f"data/{test_corpus}_{structure_type}_test.json"
+    # genf = f"generation/{fted_model}_train_{train_corpus}_test_{test_corpus}_transitionbase_{structure_type}_seed{seed}_gen{max_infer_len}_lr{lr}_iterinfer.jsonl"
+    genf = f"/root/Seq2Seq-DDP/generation/t0-3b-3b_train_diam_test_diam_augmented_seed27_gen1024_lr2e-5.jsonl"
+    goldf = f"/root/final_dataset_max8_5/augmented_test.json"
         
     # read predictions
     predictions = []

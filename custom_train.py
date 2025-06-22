@@ -250,12 +250,14 @@ def exe_test(testf, device, cfg):
     model_dir = os.path.join(FT_MODEL_DIR, f"{cfg.t5_family}-{cfg.model_size}_train_{cfg.train_corpus}_{cfg.structure_type}_seed{cfg.seed}_{cfg.lr}")
     fn_model_name = f"{cfg.t5_family}-{cfg.model_size}_train_{cfg.train_corpus}_{cfg.structure_type}_seed{cfg.seed}_{cfg.lr}"
 
-    modelcheckpoint = os.path.join(model_dir, MODEL2CHECKPOINT[fn_model_name])
+    modelcheckpoint = "/workspace/Seq2Seq-DDP/ft-models/t0-3b-3b_train_diam_augmented_seed27_2e-5"
+    # modelcheckpoint = os.path.join(model_dir, MODEL2CHECKPOINT[fn_model_name])
     tokenizer = AutoTokenizer.from_pretrained(modelcheckpoint, local_files_only=True)                   
     model = AutoModelForSeq2SeqLM.from_pretrained(modelcheckpoint, local_files_only=True,\
                                                 torch_dtype=torch.bfloat16 if cfg.bfloat16 else torch.float32)
     
-    model.parallelize()
+    # model.parallelize()
+    model.to("cuda")
     
     # load string for inference
     input_str = ["discourse parsing: " + item for item in data_test["dialogue"]]
@@ -285,7 +287,8 @@ def exe_test(testf, device, cfg):
     outfile_name = f"{cfg.t5_family}-{cfg.model_size}_train_{cfg.train_corpus}_test_{cfg.test_corpus}_{cfg.structure_type}_seed{cfg.seed}_gen{max_infer_len}_lr{cfg.lr}.jsonl"
 
     res_file = os.path.join(ROOT_DIR, f"generation/{outfile_name}")
-    
+    os.makedirs(os.path.dirname(res_file), exist_ok=True)
+
     with open(res_file, 'w') as of:
         for i, s in enumerate(decoded_preds):
             result = {'id': data_test["id"][i], "gen_output": s}
@@ -344,9 +347,9 @@ if __name__=="__main__":
     set_seed(seed=args.seed)
     
     # set up tokenizer
-    tokenizer = setup_tokenizer(args)
     
     if args.do_train:  
+        tokenizer = setup_tokenizer(args)
         exe_train(trainf, devf, tokenizer, args, device)
 
     if args.do_test:  
