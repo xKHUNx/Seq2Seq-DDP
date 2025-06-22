@@ -155,13 +155,8 @@ def train(model, tokenizer, train_data, dev_data, out_dir, cfg):
 
     trainer.train()
 
-    # manually delete older checkpoints except the latest one
-    checkpoints = [ckpt for ckpt in os.listdir(cfg.out_dir) if ckpt.startswith("checkpoint-")]
-    checkpoints.sort(key=lambda x: int(x.split("-")[1]))
-    for ckpt in checkpoints[:-1]:
-        path = os.path.join(cfg.out_dir, ckpt)
-        print(f"Deleting old checkpoint: {path}")
-        shutil.rmtree(path)
+    trainer.save_model(out_dir)
+    tokenizer.save_pretrained(out_dir)
 
     
     return trainer
