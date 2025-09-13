@@ -10,7 +10,7 @@ from constant import *
 
 def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                         structure_type='natural', max_infer_len=512, seed=27, lr='5e-5',\
-                        count_root=True, SHOW_raw=True, SHOW_postprocess=True):
+                        count_root=False, SHOW_raw=True, SHOW_postprocess=True):
     """Evaluate end2end generation"""
     print("called end2end")
     genf = r"C:\Users\user\Documents\baseline\Seq2Seq-DDP\t0-3b-3b_train_diam_test_diam_augmented_seed27_gen1024_lr2e-5.jsonl"
@@ -273,6 +273,13 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
         clean_TP += len(set(clean_p_triplets).intersection(set(g_triplets)))
         clean_FP += len(set(clean_p_triplets) - set(g_triplets)) 
 
+        # only link
+        TP_link += len(set(['-'.join([trip[0], trip[2]]) for trip in p_triplets]).intersection(set(['-'.join([trip[0], trip[2]]) for trip in g_triplets])))
+        FP_link += len(set(['-'.join([trip[0], trip[2]]) for trip in p_triplets]) - (set(['-'.join([trip[0], trip[2]]) for trip in g_triplets]))) 
+        clean_TP_link += len(set(['-'.join([trip[0], trip[2]]) for trip in clean_p_triplets]).intersection(set(['-'.join([trip[0], trip[2]]) for trip in g_triplets])))
+        clean_FP_link += len(set(['-'.join([trip[0], trip[2]]) for trip in clean_p_triplets]) - (set(['-'.join([trip[0], trip[2]]) for trip in g_triplets])))
+
+
         # Update per-relation TP/FP for raw predictions
         for trip in set(p_triplets).intersection(set(g_triplets)):
             rel_TP[trip[1]] += 1
@@ -371,7 +378,7 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
 
 
 def evaluate_transition_result(fted_model, train_corpus='stac', test_corpus='stac', structure_type='natural2',\
-                            max_infer_len=512, seed=27, lr='5e-5', count_root=True):
+                            max_infer_len=512, seed=27, lr='5e-5', count_root=False):
     """Evaluate transition-based generation"""
     
     # genf = f"generation/{fted_model}_train_{train_corpus}_test_{test_corpus}_transitionbase_{structure_type}_seed{seed}_gen{max_infer_len}_lr{lr}_iterinfer.jsonl"
