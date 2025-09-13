@@ -13,8 +13,8 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                         count_root=True, SHOW_raw=True, SHOW_postprocess=True):
     """Evaluate end2end generation"""
     print("called end2end")
-    genf = f"/root/Seq2Seq-DDP/generation/t0-3b-3b_train_diam_test_diam_augmented_seed27_gen1024_lr2e-5.jsonl"
-    goldf = f"/root/final_dataset_max8_5/augmented_test.json"
+    genf = r"C:\Users\user\Documents\baseline\Seq2Seq-DDP\t0-3b-3b_train_diam_test_diam_augmented_seed27_gen1024_lr2e-5.jsonl"
+    goldf = r"C:\Users\user\Downloads\augmented_test.json"
            
     # read predictions
     predictions = []
@@ -39,15 +39,21 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
     clean_FP, clean_FP_link = 0, 0
     clean_P, clean_P_link = 0, 0 #w post process
     G, G_link = 0, 0
+
+    # Per-relation metrics
+    rel_TP = defaultdict(int)
+    rel_FP = defaultdict(int)
+    rel_P = defaultdict(int) # Predicted relations
+    rel_G = defaultdict(int) # Gold relations
+    clean_rel_TP = defaultdict(int)
+    clean_rel_FP = defaultdict(int)
+    clean_rel_P = defaultdict(int)
+
     gold_pred_result = defaultdict(dict)
     gold_pred_result_post = defaultdict(dict)
     failed = defaultdict(list) #record failed parse generation
     hallucinate = defaultdict(list) #record imagnied edus in prediction
-
-    # Initialize dictionaries to store metrics per relation type
-    relation_metrics = defaultdict(lambda: {'TP': 0, 'FP': 0, 'G': 0})
-    clean_relation_metrics = defaultdict(lambda: {'TP': 0, 'FP': 0, 'G': 0})
-
+    
     # parse generation
     for i, (idd, g, p) in enumerate(zip(ids, golds, predictions)): #g, p is a dialogue
         gold_pred_result[idd]['gold'] = []
@@ -70,7 +76,7 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                     for j in range(0, len(elements), 2):
                         relation_type = elements[j] # Extract relation type
                         g_triplets.append((head, relation_type, elements[j+1]))
-                        relation_metrics[relation_type]['G'] += 1 # Increment G for this relation
+                        rel_G[relation_type] += 1 # Increment gold count for this relation
                 else:
                     print(gr)
             G += len(set(g_triplets))
@@ -89,7 +95,9 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                     head = elements.pop(0) # the first element in element list is the head
                     if len(elements) % 2 == 0:
                         for j in range(0, len(elements), 2):
-                            p_triplets.append((head, elements[j], elements[j+1]))
+                            relation_type = elements[j] # Extract relation type
+                            p_triplets.append((head, relation_type, elements[j+1]))
+                            rel_P[relation_type] += 1 # Increment predicted count for this relation
                     else:
                         print(pr)
             P += len(set(p_triplets)) #--> clean_P
@@ -102,8 +110,10 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
             for ip, trip in enumerate(p_triplets):
                 head_id = int(trip[0][1:-1].split('edu')[1])
                 if head_id <= max_g_edu: #post2: edu length constraint
+                    relation_type = trip[1] # Extract relation type
                     clean_p_triplets.append(trip)
                     clean_P_link += 1
+                    clean_rel_P[relation_type] += 1 # Increment clean predicted count for this relation
                 else:
                     hallucinate[idd].append(head_id)
                 if ip == len(p_triplets)-1 and head_id < max_g_edu:
@@ -116,8 +126,10 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                     failed[idd].append(f"[edu{head_id+1}]")
                     if structure_type == 'natural':
                         clean_p_triplets.append((f"[edu{head_id+1}]", DEFAULT_REL, f"[edu{head_id}]"))
+                        clean_rel_P[DEFAULT_REL] += 1 # Increment clean predicted count for default relation
                     if structure_type == 'labelmasked':
                         clean_p_triplets.append((f"[edu{head_id+1}]", DEFAULT_RELMASK, f"[edu{head_id}]"))
+                        clean_rel_P[DEFAULT_RELMASK] += 1 # Increment clean predicted count for default relation
                     clean_P_link += 1
                     head_id += 1
             if SHOW_raw:
@@ -138,7 +150,7 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
             if count_root:
                 first_edu = [ele.strip() for ele in gold_rel[0].split('|')]
                 g_quadruple.append((first_edu[0], 'edu0', 'root', 'edu0'))
-                relation_metrics['root']['G'] += 1 # Increment G for 'root' relation
+                rel_G['root'] += 1 # Increment gold count for 'root' relation
             for gr in gold_rel[1:]:
                 elements = [ele.strip() for ele in gr.split('|')] # eg: ['[edu7]', 'Acknowledgement', '[edu5]', 'Acknowledgement', '[edu3]', 'Acknowledgement']
                 if len(elements) != 3:
@@ -151,7 +163,7 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                         for j in range(0, len(deprel), 2):
                             relation_type = deprel[j] # Extract relation type
                             g_quadruple.append((headtxt, headidx, relation_type, deprel[j+1]))
-                            relation_metrics[relation_type]['G'] += 1 # Increment G for this relation
+                            rel_G[relation_type] += 1 # Increment gold count for this relation
                     else:
                         print(gr)
             G += len(set(g_quadruple))
@@ -186,6 +198,8 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                                     relation_type = deprel[j] # Extract relation type
                                     p_triplets.append((headidx, relation_type, deprel[j+1]))
                                     clean_p_triplets.append((headidx, relation_type, deprel[j+1]))
+                                    rel_P[relation_type] += 1 # Increment predicted count for this relation
+                                    clean_rel_P[relation_type] += 1 # Increment clean predicted count for this relation
                                 del g_quadruple_dupli[gg_dupli]
                                 if pp < len(p_rel_dupli):
                                     del p_rel_dupli[pp]
@@ -200,6 +214,7 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                                     corrected_depidx = f"edu{int(deprel[j+1].split('edu')[1])+gap}"
                                     if (corrected_idx, relation_type, corrected_depidx) not in clean_p_triplets:
                                         clean_p_triplets.append((corrected_idx, relation_type, corrected_depidx))
+                                        clean_rel_P[relation_type] += 1 # Increment clean predicted count for this relation
                                 del g_quadruple_dupli[gg_dupli]
                                 if pp < len(p_rel_dupli):
                                     del p_rel_dupli[pp]
@@ -210,8 +225,10 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                                 for j in range(0, len(deprel), 2):
                                     relation_type = deprel[j] # Extract relation type
                                     p_triplets.append((headidx, relation_type, deprel[j+1]))
+                                    rel_P[relation_type] += 1 # Increment predicted count for this relation
                                     if (headidx, relation_type, deprel[j+1]) not in clean_p_triplets:
                                         clean_p_triplets.append((headidx, relation_type, deprel[j+1]))
+                                        clean_rel_P[relation_type] += 1 # Increment clean predicted count for this relation
                                 del g_quadruple_dupli[gg_dupli]
                                 if pp < len(p_rel_dupli):
                                     del p_rel_dupli[pp]
@@ -239,6 +256,7 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                         clean_p_triplets_new.extend([t for t in clean_p_triplets if t[0] == cand_e])
                     else:
                         clean_p_triplets_new.append((cand_e, DEFAULT_REL, f"edu{int(cand_e.split('edu')[1])-1}"))
+                        clean_rel_P[DEFAULT_REL] += 1 # Increment clean predicted count for default relation
                 clean_p_triplets = clean_p_triplets_new
             clean_P += len(clean_p_triplets)
             clean_P_link += len(set(['-'.join([trip[0], trip[2]]) for trip in clean_p_triplets]))
@@ -250,26 +268,22 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
         # 2/ end 
         
         # link+rel
-        for trip in set(p_triplets).intersection(set(g_triplets)):
-            relation_metrics[trip[1]]['TP'] += 1
-        for trip in set(p_triplets) - set(g_triplets):
-            relation_metrics[trip[1]]['FP'] += 1
-
-        for trip in set(clean_p_triplets).intersection(set(g_triplets)):
-            clean_relation_metrics[trip[1]]['TP'] += 1
-        for trip in set(clean_p_triplets) - set(g_triplets):
-            clean_relation_metrics[trip[1]]['FP'] += 1
-
         TP += len(set(p_triplets).intersection(set(g_triplets)))
         FP += len(set(p_triplets) - set(g_triplets)) 
         clean_TP += len(set(clean_p_triplets).intersection(set(g_triplets)))
         clean_FP += len(set(clean_p_triplets) - set(g_triplets)) 
 
-        # only link
-        TP_link += len(set(['-'.join([trip[0], trip[2]]) for trip in p_triplets]).intersection(set(['-'.join([trip[0], trip[2]]) for trip in g_triplets])))
-        FP_link += len(set(['-'.join([trip[0], trip[2]]) for trip in p_triplets]) - (set(['-'.join([trip[0], trip[2]]) for trip in g_triplets]))) 
-        clean_TP_link += len(set(['-'.join([trip[0], trip[2]]) for trip in clean_p_triplets]).intersection(set(['-'.join([trip[0], trip[2]]) for trip in g_triplets])))
-        clean_FP_link += len(set(['-'.join([trip[0], trip[2]]) for trip in clean_p_triplets]) - (set(['-'.join([trip[0], trip[2]]) for trip in g_triplets])))
+        # Update per-relation TP/FP for raw predictions
+        for trip in set(p_triplets).intersection(set(g_triplets)):
+            rel_TP[trip[1]] += 1
+        for trip in set(p_triplets) - set(g_triplets):
+            rel_FP[trip[1]] += 1
+
+        # Update per-relation TP/FP for clean predictions
+        for trip in set(clean_p_triplets).intersection(set(g_triplets)):
+            clean_rel_TP[trip[1]] += 1
+        for trip in set(clean_p_triplets) - set(g_triplets):
+            clean_rel_FP[trip[1]] += 1
 
     
     print(f"====\n{test_corpus} test set, {structure_type}, seed{seed}\n====")
@@ -277,44 +291,82 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
     if SHOW_raw:
         recall = TP / G * 100
         precision = TP / (P) * 100 #in gold, docs in line 2,78,81,91 miss 1 edge
-        f1 = 2 * recall * precision / (recall + precision)
+        # Replace the F1 calculation with this safe version:
+        if (recall + precision) == 0:
+            f1 = 0.0
+        else:
+            f1 = 2 * recall * precision / (recall + precision)
         print(f"Raw  [link+rel] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
         recall = TP_link / G_link * 100
         precision = TP_link / (P_link) * 100
-        f1 = 2 * recall * precision / (recall + precision)
+        if (recall + precision) == 0:
+            f1 = 0.0
+        else:
+            f1 = 2 * recall * precision / (recall + precision)
         print(f"Raw  [linkonly] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
 
-        print("\nRaw [link+rel] per relation accuracy:")
-        for rel_type, metrics in relation_metrics.items():
-            tp = metrics['TP']
-            fp = metrics['FP']
-            g = metrics['G']
-            if g > 0:
-                recall_rel = tp / g * 100
-                precision_rel = tp / (tp + fp) * 100 if (tp + fp) > 0 else 0
-                f1_rel = 2 * recall_rel * precision_rel / (recall_rel + precision_rel) if (recall_rel + precision_rel) > 0 else 0
-                print(f"  {rel_type}: Recall: {round(recall_rel, 2)}, Precision: {round(precision_rel, 2)}, F1: {round(f1_rel, 2)}")
+        print("\nRaw Per-Relation Metrics:")
+        for rel_type in sorted(rel_G.keys()):
+            tp = rel_TP[rel_type]
+            fp = rel_FP[rel_type]
+            g = rel_G[rel_type]
+            p = rel_P[rel_type]
+
+            if g == 0: # No gold relations of this type
+                recall = 0.0
+            else:
+                recall = tp / g * 100
+            
+            if p == 0: # No predicted relations of this type
+                precision = 0.0
+            else:
+                precision = tp / p * 100
+            
+            if (recall + precision) == 0:
+                f1 = 0.0
+            else:
+                f1 = 2 * recall * precision / (recall + precision)
+            print(f"  {rel_type}: Recall: {round(recall, 2)}, Precision: {round(precision, 2)}, F1: {round(f1, 2)}")
 
     if SHOW_postprocess:
         recall = clean_TP / G * 100
         precision = clean_TP / (clean_P) * 100
-        f1 = 2 * recall * precision / (recall + precision)
+        if (recall + precision) == 0:
+            f1 = 0.0
+        else:
+            f1 = 2 * recall * precision / (recall + precision)
         print(f"Post [link+rel] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
         recall = clean_TP_link / G_link * 100
         precision = clean_TP_link / (clean_P_link) * 100
-        f1 = 2 * recall * precision / (recall + precision)
+        if (recall + precision) == 0:
+            f1 = 0.0
+        else:
+            f1 = 2 * recall * precision / (recall + precision)
         print(f"Post [linkonly] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
 
-        print("\nPost [link+rel] per relation accuracy:")
-        for rel_type, metrics in clean_relation_metrics.items():
-            tp = metrics['TP']
-            fp = metrics['FP']
-            g = metrics['G']
-            if g > 0:
-                recall_rel = tp / g * 100
-                precision_rel = tp / (tp + fp) * 100 if (tp + fp) > 0 else 0
-                f1_rel = 2 * recall_rel * precision_rel / (recall_rel + precision_rel) if (recall_rel + precision_rel) > 0 else 0
-                print(f"  {rel_type}: Recall: {round(recall_rel, 2)}, Precision: {round(precision_rel, 2)}, F1: {round(f1_rel, 2)}")
+        print("\nPost-Processed Per-Relation Metrics:")
+        for rel_type in sorted(rel_G.keys()): # Use rel_G keys to ensure all gold relations are covered
+            tp = clean_rel_TP[rel_type]
+            fp = clean_rel_FP[rel_type]
+            g = rel_G[rel_type]
+            p = clean_rel_P[rel_type]
+
+            if g == 0:
+                recall = 0.0
+            else:
+                recall = tp / g * 100
+            
+            if p == 0:
+                precision = 0.0
+            else:
+                precision = tp / p * 100
+            
+            if (recall + precision) == 0:
+                f1 = 0.0
+            else:
+                f1 = 2 * recall * precision / (recall + precision)
+            print(f"  {rel_type}: Recall: {round(recall, 2)}, Precision: {round(precision, 2)}, F1: {round(f1, 2)}")
+
     print()
 
 
@@ -323,8 +375,8 @@ def evaluate_transition_result(fted_model, train_corpus='stac', test_corpus='sta
     """Evaluate transition-based generation"""
     
     # genf = f"generation/{fted_model}_train_{train_corpus}_test_{test_corpus}_transitionbase_{structure_type}_seed{seed}_gen{max_infer_len}_lr{lr}_iterinfer.jsonl"
-    genf = f"/root/Seq2Seq-DDP/generation/t0-3b-3b_train_diam_test_diam_augmented_seed27_gen1024_lr2e-5.jsonl"
-    goldf = f"/root/final_dataset_max8_5/augmented_test.json"
+    genf = r"C:\Users\user\Documents\baseline\Seq2Seq-DDP\t0-3b-3b_train_diam_test_diam_augmented_seed27_gen1024_lr2e-5.jsonl"
+    goldf = r"C:\Users\user\Downloads\augmented_test.json"
         
     # read predictions
     predictions = []
