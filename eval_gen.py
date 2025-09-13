@@ -43,7 +43,11 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
     gold_pred_result_post = defaultdict(dict)
     failed = defaultdict(list) #record failed parse generation
     hallucinate = defaultdict(list) #record imagnied edus in prediction
-    
+
+    # Initialize dictionaries to store metrics per relation type
+    relation_metrics = defaultdict(lambda: {'TP': 0, 'FP': 0, 'G': 0})
+    clean_relation_metrics = defaultdict(lambda: {'TP': 0, 'FP': 0, 'G': 0})
+
     # parse generation
     for i, (idd, g, p) in enumerate(zip(ids, golds, predictions)): #g, p is a dialogue
         gold_pred_result[idd]['gold'] = []
@@ -64,7 +68,9 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                 head = elements.pop(0) # the first element in element list is the head
                 if len(elements) % 2 == 0:
                     for j in range(0, len(elements), 2):
-                        g_triplets.append((head, elements[j], elements[j+1]))
+                        relation_type = elements[j] # Extract relation type
+                        g_triplets.append((head, relation_type, elements[j+1]))
+                        relation_metrics[relation_type]['G'] += 1 # Increment G for this relation
                 else:
                     print(gr)
             G += len(set(g_triplets))
@@ -132,6 +138,7 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
             if count_root:
                 first_edu = [ele.strip() for ele in gold_rel[0].split('|')]
                 g_quadruple.append((first_edu[0], 'edu0', 'root', 'edu0'))
+                relation_metrics['root']['G'] += 1 # Increment G for 'root' relation
             for gr in gold_rel[1:]:
                 elements = [ele.strip() for ele in gr.split('|')] # eg: ['[edu7]', 'Acknowledgement', '[edu5]', 'Acknowledgement', '[edu3]', 'Acknowledgement']
                 if len(elements) != 3:
@@ -142,7 +149,9 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                     deprel = elements[0].replace('=', '').split()
                     if len(deprel) % 2 == 0:
                         for j in range(0, len(deprel), 2):
-                            g_quadruple.append((headtxt, headidx, deprel[j], deprel[j+1]))
+                            relation_type = deprel[j] # Extract relation type
+                            g_quadruple.append((headtxt, headidx, relation_type, deprel[j+1]))
+                            relation_metrics[relation_type]['G'] += 1 # Increment G for this relation
                     else:
                         print(gr)
             G += len(set(g_quadruple))
@@ -174,8 +183,9 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                             deprel = elements[0].replace('=', '').split()
                             if len(deprel) % 2 == 0:
                                 for j in range(0, len(deprel), 2):
-                                    p_triplets.append((headidx, deprel[j], deprel[j+1]))
-                                    clean_p_triplets.append((headidx, deprel[j], deprel[j+1]))
+                                    relation_type = deprel[j] # Extract relation type
+                                    p_triplets.append((headidx, relation_type, deprel[j+1]))
+                                    clean_p_triplets.append((headidx, relation_type, deprel[j+1]))
                                 del g_quadruple_dupli[gg_dupli]
                                 if pp < len(p_rel_dupli):
                                     del p_rel_dupli[pp]
@@ -186,9 +196,10 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                             deprel = elements[0].replace('=', '').split()
                             if len(deprel) % 2 == 0:
                                 for j in range(0, len(deprel), 2):
+                                    relation_type = deprel[j] # Extract relation type
                                     corrected_depidx = f"edu{int(deprel[j+1].split('edu')[1])+gap}"
-                                    if (corrected_idx, deprel[j], corrected_depidx) not in clean_p_triplets:
-                                        clean_p_triplets.append((corrected_idx, deprel[j], corrected_depidx))
+                                    if (corrected_idx, relation_type, corrected_depidx) not in clean_p_triplets:
+                                        clean_p_triplets.append((corrected_idx, relation_type, corrected_depidx))
                                 del g_quadruple_dupli[gg_dupli]
                                 if pp < len(p_rel_dupli):
                                     del p_rel_dupli[pp]
@@ -197,9 +208,10 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
                             deprel = elements[0].replace('=', '').split()
                             if len(deprel) % 2 == 0:
                                 for j in range(0, len(deprel), 2):
-                                    p_triplets.append((headidx, deprel[j], deprel[j+1]))
-                                    if (headidx, deprel[j], deprel[j+1]) not in clean_p_triplets:
-                                        clean_p_triplets.append((headidx, deprel[j], deprel[j+1]))
+                                    relation_type = deprel[j] # Extract relation type
+                                    p_triplets.append((headidx, relation_type, deprel[j+1]))
+                                    if (headidx, relation_type, deprel[j+1]) not in clean_p_triplets:
+                                        clean_p_triplets.append((headidx, relation_type, deprel[j+1]))
                                 del g_quadruple_dupli[gg_dupli]
                                 if pp < len(p_rel_dupli):
                                     del p_rel_dupli[pp]
@@ -238,6 +250,16 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
         # 2/ end 
         
         # link+rel
+        for trip in set(p_triplets).intersection(set(g_triplets)):
+            relation_metrics[trip[1]]['TP'] += 1
+        for trip in set(p_triplets) - set(g_triplets):
+            relation_metrics[trip[1]]['FP'] += 1
+
+        for trip in set(clean_p_triplets).intersection(set(g_triplets)):
+            clean_relation_metrics[trip[1]]['TP'] += 1
+        for trip in set(clean_p_triplets) - set(g_triplets):
+            clean_relation_metrics[trip[1]]['FP'] += 1
+
         TP += len(set(p_triplets).intersection(set(g_triplets)))
         FP += len(set(p_triplets) - set(g_triplets)) 
         clean_TP += len(set(clean_p_triplets).intersection(set(g_triplets)))
@@ -261,6 +283,18 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
         precision = TP_link / (P_link) * 100
         f1 = 2 * recall * precision / (recall + precision)
         print(f"Raw  [linkonly] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
+
+        print("\nRaw [link+rel] per relation accuracy:")
+        for rel_type, metrics in relation_metrics.items():
+            tp = metrics['TP']
+            fp = metrics['FP']
+            g = metrics['G']
+            if g > 0:
+                recall_rel = tp / g * 100
+                precision_rel = tp / (tp + fp) * 100 if (tp + fp) > 0 else 0
+                f1_rel = 2 * recall_rel * precision_rel / (recall_rel + precision_rel) if (recall_rel + precision_rel) > 0 else 0
+                print(f"  {rel_type}: Recall: {round(recall_rel, 2)}, Precision: {round(precision_rel, 2)}, F1: {round(f1_rel, 2)}")
+
     if SHOW_postprocess:
         recall = clean_TP / G * 100
         precision = clean_TP / (clean_P) * 100
@@ -270,6 +304,17 @@ def evaluate_gen_result(fted_model, train_corpus='stac', test_corpus='stac', \
         precision = clean_TP_link / (clean_P_link) * 100
         f1 = 2 * recall * precision / (recall + precision)
         print(f"Post [linkonly] recall: {round(recall, 2)}, precision: {round(precision, 2)}, f1: {round(f1, 2)}") 
+
+        print("\nPost [link+rel] per relation accuracy:")
+        for rel_type, metrics in clean_relation_metrics.items():
+            tp = metrics['TP']
+            fp = metrics['FP']
+            g = metrics['G']
+            if g > 0:
+                recall_rel = tp / g * 100
+                precision_rel = tp / (tp + fp) * 100 if (tp + fp) > 0 else 0
+                f1_rel = 2 * recall_rel * precision_rel / (recall_rel + precision_rel) if (recall_rel + precision_rel) > 0 else 0
+                print(f"  {rel_type}: Recall: {round(recall_rel, 2)}, Precision: {round(precision_rel, 2)}, F1: {round(f1_rel, 2)}")
     print()
 
 
