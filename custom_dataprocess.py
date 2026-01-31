@@ -46,18 +46,25 @@ def extract_structured_text(split, structure_type, data_dir, max_edu=500, window
         if text_length > max_edu:
             continue
             
-        # Apply sliding window
-        for window_start in range(0, max(1, text_length - window_size + 1), stride):
-            window_end = min(window_start + window_size, text_length)
-            
-            # Skip if window is too small (less than 2 EDUs)
-            if window_end - window_start < 2:
-                continue
-                
+        # Determine windows for processing
+        windows = []
+        if window_size == -1 and stride == -1:
+            if text_length >= 2:
+                windows.append((0, text_length))
+        else:
+            for window_start in range(0, max(1, text_length - window_size + 1), stride):
+                window_end = min(window_start + window_size, text_length)
+                if window_end - window_start >= 2:
+                    windows.append((window_start, window_end))
+
+        for window_start, window_end in windows:
             input_text = []
             output_struct = []
             train_dataset_dict = {}
-            train_dataset_dict['id'] = f"{dial['id']}_window_{window_start}_{window_end}"
+            if window_size == -1 and stride == -1:
+                train_dataset_dict['id'] = dial['id']
+            else:
+                train_dataset_dict['id'] = f"{dial['id']}_window_{window_start}_{window_end}"
             
             # Get relations that fall within this window
             window_relations = []
@@ -219,13 +226,17 @@ def extract_transition_based_text(split, structure_type, data_dir, window_size=1
         num_edus = len(relations)
         
         # Apply sliding window to relations
-        for window_start in range(0, max(1, num_edus - window_size + 1), stride):
-            window_end = min(window_start + window_size, num_edus)
-            
-            # Skip if window is too small
-            if window_end - window_start < 2:
-                continue
-                
+        windows = []
+        if window_size == -1 and stride == -1:
+            if num_edus >= 2:
+                windows.append((0, num_edus))
+        else:
+            for window_start in range(0, max(1, num_edus - window_size + 1), stride):
+                window_end = min(window_start + window_size, num_edus)
+                if window_end - window_start >= 2:
+                    windows.append((window_start, window_end))
+
+        for window_start, window_end in windows:
             window_relations = relations[window_start:window_end]
             window_edus = edus[window_start*2:window_end*2]  # Each EDU has 2 elements (marker + text)
             
@@ -246,7 +257,10 @@ def extract_transition_based_text(split, structure_type, data_dir, window_size=1
                 adjusted_rel = re.sub(edu_pattern, adjust_edu_ref, adjusted_rel)
                 adjusted_relations.append(adjusted_rel)
             
-            window_id = f"{id}_window_{window_start}_{window_end}"
+            if window_size == -1 and stride == -1:
+                window_id = id
+            else:
+                window_id = f"{id}_window_{window_start}_{window_end}"
             
             if structure_type == 'focus': 
                 _dialogues = ['[{}] {}'.format(window_edus[0], window_edus[1])]
