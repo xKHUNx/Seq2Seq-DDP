@@ -46,18 +46,86 @@ def extract_structured_text(split, structure_type, data_dir, max_edu=500, window
         if text_length > max_edu:
             continue
             
-        # Determine windows for processing
-        windows = []
+        # --- Process whole document if windowing is disabled ---
         if window_size == -1 and stride == -1:
-            if text_length >= 2:
-                windows.append((0, text_length))
-        else:
-            for window_start in range(0, max(1, text_length - window_size + 1), stride):
-                window_end = min(window_start + window_size, text_length)
-                if window_end - window_start >= 2:
-                    windows.append((window_start, window_end))
+            if text_length < 2:
+                continue
+                
+            input_text = []
+            output_struct = []
+            train_dataset_dict = {}
+            train_dataset_dict['id'] = dial['id']
+            
+            # Process EDUs in the entire document
+            for j in range(text_length):
+                edu = dial['edus'][j]
+                
+                if structure_type == 'augmented':
+                    if '[' in edu['text'] or ']' in edu['text']:
+                        text2 = edu['text'].replace('[', '').replace(']', '').replace('|', '')
+                    else:
+                        text2 = edu['text']
+                    spktext = f"{edu['speaker']}: {text2}"
+                    input_text.append(f"{BEGIN_EDU_TOKEN} {spktext} {END_EDU_TOKEN}")
+                    output_begin = f"{BEGIN_EDU_TOKEN} {spktext} {SEPARATOR_TOKEN} edu{j} {SEPARATOR_TOKEN} "
+                    if j == 0:
+                        output_begin += f"root = edu0 {END_EDU_TOKEN}"
+                    else:
+                        for rel in dial['relations']:
+                            if int(rel['y']) == j:
+                                output_begin += f"{rel['type']} {RELATION_TOKEN} edu{rel['x']} "
+                        output_begin += END_EDU_TOKEN
+                    output_struct.append(output_begin)
+                    
+                elif structure_type == 'natural':
+                    spktext = f"[edu{j}] {edu['speaker']}: {edu['text']}"
+                    input_text.append(spktext)
+                    output_begin = f"[edu{j}] is "
+                    if j == 0:
+                        output_begin += 'root'
+                    else:
+                        for rel in dial['relations']:
+                            if int(rel['y']) == j:
+                                output_begin += f"{rel['type']} of [edu{rel['x']}] "
+                        output_begin = output_begin.strip()
+                    output_struct.append(output_begin)
 
-        for window_start, window_end in windows:
+                elif structure_type == 'labelmasked':
+                    if '[' in edu['text'] or ']' in edu['text']:
+                        text2 = edu['text'].replace('[', '').replace(']', '').replace('|', '')
+                    else:
+                        text2 = edu['text']
+                    spktext = f"[edu{j}] {edu['speaker']}: {text2}"
+                    input_text.append(spktext)
+                    output_begin = f"[edu{j}] is "
+                    if j == 0:
+                        output_begin += 'root'
+                    else:
+                        for rel in dial['relations']:
+                            if int(rel['y']) == j:
+                                maskedrel = MASKLABEL[rel['type']]
+                                output_begin += f"{maskedrel} of [edu{rel['x']}] "
+                        output_begin = output_begin.strip()
+                    output_struct.append(output_begin)
+            
+            input_dial = " ".join(input_text)
+            if structure_type == 'augmented':
+                output_dial = " ".join(output_struct)    
+            else:
+                output_dial = "; ".join(output_struct)
+            train_dataset_dict['dialogue'] = input_dial
+            train_dataset_dict['structure'] = output_dial
+            train_dataset.append(train_dataset_dict)
+            continue
+
+        # --- Apply sliding window ---
+        for window_start in range(0, max(1, text_length - window_size + 1), stride):
+            window_end = min(window_start + window_size, text_length)
+            
+            # Skip if window is too small (less than 2 EDUs)
+            if window_end - window_start < 2:
+                continue
+                
             input_text = []
             output_struct = []
             train_dataset_dict = {}
@@ -224,19 +292,45 @@ def extract_transition_based_text(split, structure_type, data_dir, window_size=1
         assert len(edus) == 2*len(relations), f"{id}: {edus}"
         
         num_edus = len(relations)
-        
-        # Apply sliding window to relations
-        windows = []
-        if window_size == -1 and stride == -1:
-            if num_edus >= 2:
-                windows.append((0, num_edus))
-        else:
-            for window_start in range(0, max(1, num_edus - window_size + 1), stride):
-                window_end = min(window_start + window_size, num_edus)
-                if window_end - window_start >= 2:
-                    windows.append((window_start, window_end))
 
-        for window_start, window_end in windows:
+        # --- Process whole document if windowing is disabled ---
+        if window_size == -1 and stride == -1:
+            if num_edus < 1:
+                continue
+            
+            if structure_type == 'focus': 
+                _dialogues = ['[{}] {}'.format(edus[0], edus[1])]
+                for i in range(len(relations)):
+                    _structure = re.split('is', relations[i], 1)[1].strip() if ' is ' in relations[i] else ' '
+                    x = {'id': id + '_{:0>2d}'.format(i),
+                         'dialogue': ''.join(_dialogues[-18:-1] + [' **'] + _dialogues[-1:]).strip(),
+                         'structure': _structure}
+                    outf.write(json.dumps(x) + '\n')
+                    if i < len(relations) - 1:
+                        _dialogues[-1] += ' | {};'.format(_structure)
+                        _dialogues.append(' [{}] {}'.format(edus[(i+1)*2], edus[(i+1)*2+1]))
+            
+            elif structure_type == 'natural2':
+                _dialogues = ['[{}] [{}] is'.format(edus[0], edus[1])]
+                for i in range(len(relations)):
+                    _structure = re.split('is', relations[i], 1)[1].strip() if ' is ' in relations[i] else ' '
+                    x = {'id': id + '_{:0>2d}'.format(i),
+                         'dialogue': ''.join(_dialogues[-18:]).strip(),
+                         'structure': _structure}
+                    outf.write(json.dumps(x) + '\n')
+                    if i < len(relations) - 1:
+                        _dialogues[-1] += ' {};'.format(_structure)
+                        _dialogues.append(' [{}] [{}] is'.format(edus[(i+1)*2], edus[(i+1)*2+1]))
+            continue
+
+        # --- Apply sliding window to relations ---
+        for window_start in range(0, max(1, num_edus - window_size + 1), stride):
+            window_end = min(window_start + window_size, num_edus)
+            
+            # Skip if window is too small
+            if window_end - window_start < 2:
+                continue
+                
             window_relations = relations[window_start:window_end]
             window_edus = edus[window_start*2:window_end*2]  # Each EDU has 2 elements (marker + text)
             
