@@ -303,7 +303,7 @@ def extract_transition_based_text(split, structure_type, data_dir, window_size=1
                 for i in range(len(relations)):
                     _structure = re.split('is', relations[i], 1)[1].strip() if ' is ' in relations[i] else ' '
                     x = {'id': id + '_{:0>2d}'.format(i),
-                         'dialogue': ''.join(_dialogues[-18:-1] + [' **'] + _dialogues[-1:]).strip(),
+                         'dialogue': ''.join(_dialogues[-8:-1] + [' **'] + _dialogues[-1:]).strip(),
                          'structure': _structure}
                     outf.write(json.dumps(x) + '\n')
                     if i < len(relations) - 1:
@@ -315,7 +315,7 @@ def extract_transition_based_text(split, structure_type, data_dir, window_size=1
                 for i in range(len(relations)):
                     _structure = re.split('is', relations[i], 1)[1].strip() if ' is ' in relations[i] else ' '
                     x = {'id': id + '_{:0>2d}'.format(i),
-                         'dialogue': ''.join(_dialogues[-18:]).strip(),
+                         'dialogue': ''.join(_dialogues[-8:]).strip(),
                          'structure': _structure}
                     outf.write(json.dumps(x) + '\n')
                     if i < len(relations) - 1:
@@ -372,7 +372,7 @@ def extract_transition_based_text(split, structure_type, data_dir, window_size=1
                         _structure = ' '
 
                     x = {'id': window_id + '_{:0>2d}'.format(i),
-                        'dialogue': ''.join(_dialogues[-18:-1] + [' **'] + _dialogues[-1:]).strip(),
+                        'dialogue': ''.join(_dialogues[-8:-1] + [' **'] + _dialogues[-1:]).strip(),
                         'structure': _structure
                         }
                     x = json.dumps(x) + '\n'
@@ -408,7 +408,7 @@ def extract_transition_based_text(split, structure_type, data_dir, window_size=1
                         _structure = ' '
 
                     x = {'id': window_id + '_{:0>2d}'.format(i),
-                    'dialogue': ''.join(_dialogues[-18:]).strip(),
+                    'dialogue': ''.join(_dialogues[-8:]).strip(),
                     'structure': _structure
                     }
                     x = json.dumps(x) + '\n'
