@@ -1,5 +1,6 @@
 # paths
 ROOT_DIR = "/root/Seq2Seq-DDP"
+# ROOT_DIR = r"C:\Users\user\Documents\baseline\Seq2Seq-DDP"
 DATA_DIR = "/root/Seq2Seq-DDP/data"
 HF_MODEL_DIR = "/root/.cache/huggingface/hub"
 FT_MODEL_DIR = "/workspace/Seq2Seq-DDP/ft-models"
@@ -68,5 +69,6 @@ ID2LABEL = {0: 'Question_answer_pair',
 # stored model checkpoint
 MODEL2CHECKPOINT = {'t0-3b_train_stac_focus_seed27_5e-5': 'checkpoint-6399',
                     't0-3b_train_molweni_focus_seed27_5e-5': 'checkpoint-19872',
-                    't0-3b-3b_train_diam_augmented_seed27_2e-5': ''
+                    't0-3b-3b_train_diam_augmented_seed27_2e-5': '',
+                    't0-3b-3b_train_diam_natural2_seed27_2e-5': ''
                     }

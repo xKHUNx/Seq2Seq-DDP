@@ -250,7 +250,7 @@ def exe_test(testf, device, cfg):
     model_dir = os.path.join(FT_MODEL_DIR, f"{cfg.t5_family}-{cfg.model_size}_train_{cfg.train_corpus}_{cfg.structure_type}_seed{cfg.seed}_{cfg.lr}")
     fn_model_name = f"{cfg.t5_family}-{cfg.model_size}_train_{cfg.train_corpus}_{cfg.structure_type}_seed{cfg.seed}_{cfg.lr}"
 
-    modelcheckpoint = "/workspace/Seq2Seq-DDP/ft-models/t0-3b-3b_train_diam_augmented_seed27_2e-5"
+    modelcheckpoint = "/workspace/Seq2Seq-DDP/ft-models/t0-3b-3b_train_diam_natural2_seed27_2e-5"
     # modelcheckpoint = os.path.join(model_dir, MODEL2CHECKPOINT[fn_model_name])
     tokenizer = AutoTokenizer.from_pretrained(modelcheckpoint, local_files_only=True)                   
     model = AutoModelForSeq2SeqLM.from_pretrained(modelcheckpoint, local_files_only=True,\
