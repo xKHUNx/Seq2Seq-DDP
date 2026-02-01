@@ -22,7 +22,7 @@ class State(object):
         self.fix_count = fix_count
         self.max_len_doc = max_len_doc
         self.done = False
-        self.prefix = "dicourse parsing: "
+        self.prefix = "discourse parsing: "
         
         self.edu_map, self.edu_map_context = -1, [] # edu index
         self.edu, self.edu_context = "", [] # edu text
@@ -45,7 +45,10 @@ class State(object):
         self.max_edu_map = len(self.edu_map_context) #longest edu in the doc
     
     def _load_trained_model(self, model_dir, fn_model_name):
-        self.modelcheckpoint = os.path.join(model_dir, MODEL2CHECKPOINT[fn_model_name])
+        checkpoint_suffix = MODEL2CHECKPOINT.get(fn_model_name, "")
+        self.modelcheckpoint = os.path.join(model_dir, checkpoint_suffix) if checkpoint_suffix else model_dir
+        
+        print(f"Loading model from {self.modelcheckpoint}")
         self.tokenizer = AutoTokenizer.from_pretrained(self.modelcheckpoint, local_files_only=True)                   
         self.model = AutoModelForSeq2SeqLM.from_pretrained(self.modelcheckpoint, local_files_only=True,\
                                                     torch_dtype=torch.bfloat16 if self.bfloat16 else torch.float32,
@@ -170,13 +173,22 @@ def create_documents(document: str, dataset: str):
     if dataset == 'stac':
         with open(document, 'r') as inf:
             docs = inf.readlines()
-    elif dataset == 'molweni':
+    elif dataset in ['molweni', 'diam']:
         with open(document, 'r') as inf:
             docs = json.load(inf)
+    else:
+        # Fallback: try to detect if it's JSON or JSONL
+        with open(document, 'r') as inf:
+            content = inf.read(1024).strip()
+            inf.seek(0)
+            if content.startswith('['):
+                docs = json.load(inf)
+            else:
+                docs = inf.readlines()
     
     # start process a document  
     for i, line in enumerate(docs):
-        if dataset == 'stac':
+        if isinstance(line, str):
             doc = json.loads(line)
         else:
             doc = line
@@ -195,7 +207,9 @@ def create_documents(document: str, dataset: str):
             if dataset == 'stac': 
                 assert i == edu['speechturn'] # only stac file has this attribute
                 input_doc['edu_maps'].append(edu['speechturn'])
-            elif dataset == 'molweni':
+            elif dataset in ['molweni', 'diam']:
+                input_doc['edu_maps'].append(i)
+            else:
                 input_doc['edu_maps'].append(i)
             input_doc['edus'].append(f"{edu['speaker']}: {edu['text']}")
         for rel in doc['relations']:
@@ -208,18 +222,19 @@ def create_documents(document: str, dataset: str):
 
 if __name__=="__main__":
     
-    parser = argparse.ArgumentParser()            
-    
-    parser.add_argument("--train_corpus", type=str, default="stac", help="train corpus: stac, molweni")
-    parser.add_argument("--test_corpus", type=str, default="stac", help="test corpus: stac, molweni")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_dir", type=str, help="path to your training data")
+    parser.add_argument("--train_corpus", type=str, default="stac", help="train corpus: stac, molweni, diam")
+    parser.add_argument("--test_corpus", type=str, default="stac", help="test corpus: stac, molweni, diam")
     parser.add_argument("-s", "--structure_type", type=str, default=None, required=True, \
                         help="transition-based: 'focus', 'natural2'.")
     parser.add_argument("-t", "--t5_family", type=str, default="t0-3b", help="choose from: 't0-3b', 'flan-t5', 't5'")  
     parser.add_argument("-m", "--model_size", type=str, default="3b", \
                         help="choose from: flan-t5: 'base', 'large', 'xl' 3B, 'xxl' 11B | t0: 3b, 11b, pp | t5: 3b, large")
     parser.add_argument("-b", "--bfloat16", action="store_true", default=False, help="if use brain float16, default=False")  
-    parser.add_argument("-l", "--lr", type=str, default='5e-5', help="5e-5 up to xl/3b")  
+    parser.add_argument("-l", "--lr", type=str, default='2e-5', help="5e-5 up to xl/3b | 2e-5 xxl/11b")  
     parser.add_argument("--seed", type=int, default=27, help="seed: 27, 16, etc")
+    parser.add_argument("--out_dir", type=str, help="path to store/load fine-tuned models")
     args = parser.parse_args()
 
     train_corpus = args.train_corpus
@@ -231,16 +246,17 @@ if __name__=="__main__":
     bfloat16 = args.bfloat16
     seed = args.seed
     
-    MAX_EDU_LEN = 37 # stac: 37, molweni: 14
+    MAX_EDU_LEN = 40 # stac: 37, molweni: 14, diam: 40
  
     set_seed(seed=seed)
 
     # pretrained model
     fn_model_name = f"{t5_family}-{model_size}_train_{train_corpus}_{structure_type}_seed{seed}_{lr}"
-    model_dir = os.path.join(FT_MODEL_DIR, f"{t5_family}-{model_size}_train_{train_corpus}_{structure_type}_seed{seed}_{lr}")
+    ft_model_dir = args.out_dir if args.out_dir else FT_MODEL_DIR
+    model_dir = os.path.join(ft_model_dir, fn_model_name)
     
     # load test file, transition-based use original test file as input, e2e use processed structured test file
-    testf = os.path.join(ROOT_DIR, f"data/{test_corpus}/test.json")
+    testf = "/root/final_dataset_full/test.json"
     
     # initialize test documents
     input_documents = create_documents(testf, test_corpus)
