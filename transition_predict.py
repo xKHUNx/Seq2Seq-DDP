@@ -100,7 +100,15 @@ class State(object):
     
     def _postprocess_focus_y_for_input_annotation(self, y):
         """post process prediction string y in order to put in next step input annotation"""
-        if y.startswith("root"):
+        # Strip potential [eduX] is prefix in natural2
+        if self.structure_type == 'natural2' and ' is ' in y:
+            y = y.split(' is ', 1)[1].strip()
+        
+        # Strip common suffixes/punctuation
+        y = y.split(' ; ')[0].split(' ;')[0].strip()
+        if y.endswith('.'): y = y[:-1].strip()
+
+        if y.startswith("root") or y.strip() == "root":
             returny = 'root'
         else:
             elements = y.replace('of', ' ').split()
@@ -109,11 +117,14 @@ class State(object):
                 for j in range(0, len(elements), 2):
                     returny += f"{elements[j]} of {elements[j+1]} "
             else:
-                # failed case, e.g.: elements = ['Conditional', 'Continuation', '[edu1]']
-                returny = f"{elements[0]} of {elements[-1]}" #take the first and the last ele in the list
+                # print(f"DEBUG: Failed Parse on Doc {self.docid}, EDU {self.edu_map}. Elements: {elements}")
+                if len(elements) > 0:
+                    returny = f"{elements[0]} of {elements[-1]}"
+                else:
+                    returny = ""
                 self.fail_parse += 1
-                # raise ValueError(f"Doc {self.docid} incomplete prediction: {elements}")
-        return returny.strip()   
+        return returny.strip()
+   
     
     def _postprocess_y_to_fix_miscount(self, y):
         """post process to manually fix head edu counting issue"""
